@@ -1,0 +1,20 @@
+EarthTime 1.1.0 — Earth map credits
+
+DAY MAP (8192 x 4096)
+NASA Blue Marble: The Blue Marble: Land Surface, Ocean Color and Sea Ice.
+https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57730/land_ocean_ice_8192.png
+https://visibleearth.nasa.gov/collection/1484/blue-marble?size=small
+
+NIGHT MAP AND CLOUD MAP (8192 x 4096 each)
+Solar System Scope / INOVE
+https://www.solarsystemscope.com/textures/
+https://play.solarsystemscope.com/textures/download/8k_earth_nightmap.jpg
+https://play.solarsystemscope.com/textures/download/8k_earth_clouds.jpg
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+Original files are unchanged. Cloud brightness is used as transparency at runtime.
+Retrieved on 2026-10-25. These maps are static, not live satellite feeds.
+
+THREE.JS
+MIT license — see THREE-LICENSE.txt bundled alongside this notice.

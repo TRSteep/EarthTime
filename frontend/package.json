@@ -1,0 +1,25 @@
+{
+  "name": "earthtime-frontend",
+  "private": true,
+  "version": "1.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "format": "prettier --write src index.html package.json tsconfig.json pnpm-workspace.yaml",
+    "test": "node --experimental-strip-types --test src/geo.test.ts src/solar.test.ts"
+  },
+  "dependencies": {
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "0.186.0",
+    "prettier": "3.6.2",
+    "typescript": "5.9.3",
+    "vite": "8.3.5"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
