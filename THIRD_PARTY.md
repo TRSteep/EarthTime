@@ -1,6 +1,6 @@
 # Third-party assets
 
-EarthTime 1.1.0 uses the following original high-resolution Earth maps, retrieved on 2026-10-25. The previous low-resolution three.js example maps have been removed.
+EarthTime 1.2.2 uses the following original high-resolution Earth maps, retrieved on 2026-10-25. The previous low-resolution three.js example maps have been removed.
 
 | Local file | Author / upstream file | Resolution |
 | --- | --- | --- |
@@ -19,9 +19,25 @@ Attribution is displayed in the application footer and included in `frontend/pub
 
 Solar calculations follow the equations published by [NOAA Global Monitoring Laboratory](https://gml.noaa.gov/grad/solcalc/calcdetails.html), based on Jean Meeus, *Astronomical Algorithms*. The application calculates a geocentric Sun direction for the globe; it does not apply local atmospheric refraction.
 
+## Numeric terrain / bathymetry
+
+**NOAA National Centers for Environmental Information. 2022: ETOPO 2022 15 Arc-Second Global Relief Model. DOI: [10.25921/fd45-gt74](https://doi.org/10.25921/fd45-gt74). Accessed 2026-10-25.**
+
+- [Dataset and documentation](https://www.ncei.noaa.gov/products/etopo-global-relief-model).
+- [NOAA OceanWatch ERDDAP source](https://oceanwatch.pifsc.noaa.gov/erddap/info/ETOPO_2022_v1_60s/index.html): 60 arc-second Ice Surface grid, elevations in meters relative to EGM2008.
+- Derived asset: `frontend/public/terrain/etopo2022-6min.bin.gz`, with metadata in the neighboring JSON file.
+- Processing: sample every sixth grid cell (6 arc-minutes), round to whole meters, reorder longitude, derive a negative-height ocean-connectivity mask, pack and gzip. No fabricated heights, photo-derived depth or AI imagery.
+- Source SHA-256, exact request URL and binary layout are retained in the metadata. `cmd/prepare-relief` reproduces the asset from the source NetCDF.
+
+The ERDDAP provider permits free use and redistribution, with no warranty of accuracy or suitability. The model is for visualisation, not navigation or surveying. Vertical exaggeration in the renderer is explicitly labeled and does not modify the stored meter values.
+
 Runtime libraries:
 
 - [three.js](https://github.com/mrdoob/three.js): MIT.
 - [Wails](https://github.com/wailsapp/wails): MIT.
+
+## City reference coordinates
+
+Urban reference points for Bogotá, Lagos, Kinshasa, Dhaka, Singapore and London Village (Kiritimati) were checked and adapted from [GeoNames cities500](https://download.geonames.org/export/dump/), accessed 2026-10-25, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). GeoNames uses WGS84 coordinates; see [About GeoNames](https://www.geonames.org/about.html). These points identify settlements rather than the geographic centre of their larger urban region or island. No complete GeoNames dataset is distributed with the app.
 
 Dependency versions are fixed in `go.mod`, `go.sum`, `frontend/package.json`, and `frontend/pnpm-lock.yaml`. Their upstream license notices remain with the dependencies.

@@ -9,7 +9,7 @@
   "author": { "name": "EarthTime" },
   "info": {
     "productName": "EarthTime",
-    "productVersion": "1.1.0",
-    "comments": "3D Earth and world clocks"
+    "productVersion": "1.2.2",
+    "comments": "3D Earth with NOAA ETOPO terrain, bathymetry and world clocks"
   }
 }

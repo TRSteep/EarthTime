@@ -2,12 +2,22 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { CityTime } from "./backend";
 import { sunPosition, toXYZ } from "./geo";
+import {
+  HeightField,
+  loadHeightField,
+  reliefRadius,
+  type TerrainSettings,
+} from "./terrain";
+import { applyReliefScale, createReliefGeometry } from "./terrain-mesh";
 
 const vertexShader = `
+  attribute float elevation;
+  varying float vElevation;
   varying vec2 vUv;
   varying vec3 vNormal;
   varying vec3 vPosition;
   void main() {
+    vElevation = elevation;
     vUv = uv;
     vNormal = normalize(mat3(modelMatrix) * normal);
     vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
@@ -29,7 +39,25 @@ export class Globe {
   private readonly camera = new THREE.PerspectiveCamera(40, 1, 0.05, 100);
   private readonly controls: OrbitControls;
   private readonly earthMaterial: THREE.ShaderMaterial;
-  private readonly earth: THREE.Mesh;
+  private readonly earth: THREE.Mesh<
+    THREE.SphereGeometry,
+    THREE.ShaderMaterial
+  >;
+  private readonly ocean: THREE.Mesh<
+    THREE.SphereGeometry,
+    THREE.ShaderMaterial
+  >;
+  private readonly atmosphere: THREE.Mesh<
+    THREE.SphereGeometry,
+    THREE.ShaderMaterial
+  >;
+  private heightField?: HeightField;
+  private terrainSettings: TerrainSettings = {
+    exaggeration: 20,
+    bathymetry: false,
+    detail: "standard",
+  };
+  private terrainReady = false;
   private readonly clouds: THREE.Mesh<
     THREE.SphereGeometry,
     THREE.MeshPhongMaterial
@@ -57,6 +85,7 @@ export class Globe {
     direction: THREE.Vector3;
     rotation: THREE.Quaternion;
     distance: number;
+    targetDistance: number;
   };
   private onRotateChange: (rotating: boolean) => void;
 
@@ -107,6 +136,7 @@ export class Globe {
         nightMap: { value: placeholder },
         sunDirection: { value: new THREE.Vector3(...sunPosition(new Date())) },
         lightingEnabled: { value: 0 },
+        bathymetry: { value: 0 },
       },
       vertexShader,
       fragmentShader: `
@@ -114,18 +144,32 @@ export class Globe {
         uniform sampler2D nightMap;
         uniform vec3 sunDirection;
         uniform float lightingEnabled;
+        uniform float bathymetry;
+        varying float vElevation;
         varying vec2 vUv;
         varying vec3 vNormal;
         varying vec3 vPosition;
         void main() {
           vec3 normal = normalize(vNormal);
-          float sunlight = dot(normal, sunDirection);
+          vec3 radial = normalize(vPosition);
+          float sunlight = dot(radial, sunDirection);
           float night = 1.0 - smoothstep(-0.1045, 0.0523, sunlight);
           vec3 surface = texture2D(dayMap, vUv).rgb;
+          if (bathymetry > 0.5) {
+            if (vElevation < 0.0) {
+              float depth = clamp(-vElevation / 11000.0, 0.0, 1.0);
+              surface = mix(vec3(0.08, 0.5, 0.57), vec3(0.005, 0.012, 0.07), pow(depth, 0.65));
+            } else {
+              float height = clamp(vElevation / 6500.0, 0.0, 1.0);
+              surface = mix(vec3(0.16, 0.32, 0.21), vec3(0.65, 0.49, 0.3), min(height * 2.0, 1.0));
+              surface = mix(surface, vec3(0.9, 0.94, 0.95), smoothstep(0.65, 1.0, height));
+            }
+          }
           vec3 lights = texture2D(nightMap, vUv).rgb;
-          vec3 shaded = surface * (0.018 + 0.982 * max(sunlight, 0.0));
-          shaded += lights * night * 1.5;
-          vec3 color = mix(surface * 0.9, shaded, lightingEnabled);
+          vec3 shaded = surface * (0.018 + 0.982 * max(dot(normal, sunDirection), 0.0));
+          shaded += lights * night * 1.5 * (1.0 - bathymetry);
+          float fill = 0.5 + 0.5 * max(dot(normal, normalize(cameraPosition - vPosition)), 0.0);
+          vec3 color = mix(surface * fill, shaded, lightingEnabled);
           float rim = pow(1.0 - max(dot(normal, normalize(cameraPosition - vPosition)), 0.0), 4.0);
           color += vec3(0.08, 0.31, 0.46) * rim * 0.45;
           gl_FragColor = vec4(color, 1.0);
@@ -137,6 +181,41 @@ export class Globe {
     const geometry = new THREE.SphereGeometry(1, 128, 64);
     this.earth = new THREE.Mesh(geometry, this.earthMaterial);
     this.scene.add(this.earth);
+
+    this.ocean = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 512, 256),
+      new THREE.ShaderMaterial({
+        uniforms: {
+          dayMap: { value: placeholder },
+          oceanMask: { value: placeholder },
+          oceanUVOffset: { value: new THREE.Vector2() },
+          sunDirection: this.earthMaterial.uniforms.sunDirection,
+          lightingEnabled: this.earthMaterial.uniforms.lightingEnabled,
+        },
+        vertexShader,
+        fragmentShader: `
+        uniform sampler2D dayMap;
+        uniform sampler2D oceanMask;
+        uniform vec2 oceanUVOffset;
+        uniform vec3 sunDirection;
+        uniform float lightingEnabled;
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        void main() {
+          if (texture2D(oceanMask, vUv + oceanUVOffset).r < 0.5) discard;
+          vec3 normal = normalize(vNormal);
+          vec3 color = texture2D(dayMap, vUv).rgb;
+          float diffuse = mix(0.85, 0.018 + 0.982 * max(dot(normal, sunDirection), 0.0), lightingEnabled);
+          gl_FragColor = vec4(color * diffuse, 1.0);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }
+      `,
+      }),
+    );
+    this.ocean.visible = false;
+    this.scene.add(this.ocean);
 
     this.clouds = new THREE.Mesh(
       new THREE.SphereGeometry(1.009, 96, 48),
@@ -150,7 +229,7 @@ export class Globe {
     this.clouds.visible = false;
     this.scene.add(this.clouds, this.sunlight, this.ambientLight);
 
-    const atmosphere = new THREE.Mesh(
+    this.atmosphere = new THREE.Mesh(
       new THREE.SphereGeometry(1.055, 64, 48),
       new THREE.ShaderMaterial({
         vertexShader,
@@ -170,7 +249,7 @@ export class Globe {
         depthWrite: false,
       }),
     );
-    this.scene.add(atmosphere);
+    this.scene.add(this.atmosphere);
     this.addStars();
 
     for (const city of cities) {
@@ -204,7 +283,10 @@ export class Globe {
       label.innerHTML = "<span></span><strong></strong>";
       label.children[0].textContent = city.name;
       label.children[1].textContent = city.time.slice(0, 5);
-      label.setAttribute("aria-label", `Показать город ${city.name}`);
+      label.setAttribute(
+        "aria-label",
+        `Показать ${city.kind === "reference" ? "опорную точку" : "город"} ${city.name}`,
+      );
       label.addEventListener("click", () => onSelect(city.id));
       this.labelLayer.append(label);
       this.markers.push({ city, position, dot, ring, label });
@@ -233,7 +315,10 @@ export class Globe {
       const hit = this.raycaster.intersectObjects(
         this.markers.map((marker) => marker.dot),
       )[0];
-      const surface = this.raycaster.intersectObject(this.earth)[0];
+      if (!hit) return;
+      const surface = this.raycaster.intersectObjects(
+        this.ocean.visible ? [this.earth, this.ocean] : [this.earth],
+      )[0];
       if (hit && (!surface || hit.distance < surface.distance))
         onSelect(hit.object.userData.cityID as string);
     });
@@ -252,12 +337,13 @@ export class Globe {
     this.animate();
   }
 
-  async loadTextures(): Promise<void> {
+  async loadAssets(): Promise<void> {
     const loader = new THREE.TextureLoader();
-    const [day, night, clouds] = await Promise.all([
+    const [day, night, clouds, field] = await Promise.all([
       loader.loadAsync("/textures/earth-day-8k.png"),
       loader.loadAsync("/textures/earth-night-8k.jpg"),
       loader.loadAsync("/textures/earth-clouds-8k.jpg"),
+      loadHeightField(),
     ]);
     for (const texture of [day, night, clouds]) {
       texture.colorSpace =
@@ -270,9 +356,73 @@ export class Globe {
     this.earthMaterial.uniforms.dayMap.value.dispose();
     this.earthMaterial.uniforms.dayMap.value = day;
     this.earthMaterial.uniforms.nightMap.value = night;
+    this.ocean.material.uniforms.dayMap.value = day;
+    this.heightField = field;
+    const mask = new THREE.DataTexture(
+      field.oceanMask(),
+      field.width,
+      field.height,
+      THREE.RedFormat,
+      THREE.UnsignedByteType,
+    );
+    mask.wrapS = THREE.RepeatWrapping;
+    mask.magFilter = THREE.LinearFilter;
+    mask.minFilter = THREE.LinearFilter;
+    mask.needsUpdate = true;
+    this.ocean.material.uniforms.oceanMask.value = mask;
+    this.ocean.material.uniforms.oceanUVOffset.value.set(
+      ...field.oceanUVOffset(),
+    );
     this.clouds.material.alphaMap = clouds;
     this.clouds.material.needsUpdate = true;
-    this.clouds.visible = true;
+    this.setTerrain(this.terrainSettings);
+  }
+
+  elevationAt(lat: number, lon: number): number | null {
+    return this.heightField?.elevationAt(lat, lon) ?? null;
+  }
+
+  setTerrain(settings: TerrainSettings): void {
+    const previous = this.terrainSettings;
+    this.terrainSettings = { ...settings };
+    if (!this.heightField) return;
+    if (!this.terrainReady || settings.detail !== previous.detail) {
+      const old = this.earth.geometry;
+      this.earth.geometry = createReliefGeometry(
+        this.heightField,
+        settings.detail,
+        settings.exaggeration,
+      );
+      old.dispose();
+      this.terrainReady = true;
+    } else if (settings.exaggeration !== previous.exaggeration) {
+      applyReliefScale(this.earth.geometry, settings.exaggeration);
+    }
+    this.earthMaterial.uniforms.bathymetry.value = settings.bathymetry ? 1 : 0;
+    this.ocean.visible = !settings.bathymetry;
+    this.clouds.visible = !settings.bathymetry;
+    this.clouds.scale.setScalar(
+      reliefRadius(12000, settings.exaggeration) / 1.009,
+    );
+    this.atmosphere.scale.setScalar(
+      Math.max(1.055, reliefRadius(12000, settings.exaggeration) + 0.025) /
+        1.055,
+    );
+    for (const marker of this.markers) {
+      const height = Math.max(
+        0,
+        this.heightField.elevationAt(marker.city.lat, marker.city.lon),
+      );
+      marker.position.set(
+        ...toXYZ(
+          marker.city.lat,
+          marker.city.lon,
+          reliefRadius(height, settings.exaggeration) + 0.008,
+        ),
+      );
+      marker.dot.position.copy(marker.position);
+      marker.ring.position.copy(marker.position);
+    }
   }
 
   update(cities: CityTime[]): void {
@@ -321,6 +471,10 @@ export class Globe {
     this.focus(25, 25);
   }
 
+  focusLocation(lat: number, lon: number): void {
+    this.focus(lat, lon, 2.3);
+  }
+
   setActive(active: boolean): void {
     this.active = active;
     this.animationClock.getDelta();
@@ -345,12 +499,14 @@ export class Globe {
     this.earthMaterial.uniforms.dayMap.value.dispose();
     this.earthMaterial.uniforms.nightMap.value.dispose();
     this.clouds.material.alphaMap?.dispose();
+    if (this.heightField)
+      this.ocean.material.uniforms.oceanMask.value.dispose();
     this.renderer.dispose();
     this.labelLayer.remove();
     this.renderer.domElement.remove();
   }
 
-  private focus(lat: number, lon: number): void {
+  private focus(lat: number, lon: number, targetDistance = 4.2): void {
     this.setAutoRotate(false);
     this.controls.enabled = false;
     const direction = this.camera.position.clone().normalize();
@@ -362,6 +518,7 @@ export class Globe {
         new THREE.Vector3(...toXYZ(lat, lon)),
       ),
       distance: this.camera.position.length(),
+      targetDistance,
     };
   }
 
@@ -433,7 +590,13 @@ export class Globe {
       this.camera.position
         .copy(animation.direction)
         .applyQuaternion(rotation)
-        .multiplyScalar(THREE.MathUtils.lerp(animation.distance, 4.2, eased));
+        .multiplyScalar(
+          THREE.MathUtils.lerp(
+            animation.distance,
+            animation.targetDistance,
+            eased,
+          ),
+        );
       this.camera.lookAt(0, 0, 0);
       if (progress === 1) {
         this.focusAnimation = undefined;

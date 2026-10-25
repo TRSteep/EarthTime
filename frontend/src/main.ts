@@ -9,6 +9,7 @@ import {
   type SolarMode,
 } from "./solar";
 import version from "../../VERSION?raw";
+import { readTerrainSettings, type TerrainSettings } from "./terrain";
 
 const icons = {
   globe:
@@ -37,12 +38,13 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <div id="load-status" class="load-status" role="status">Загружаем Землю…</div>
       <div id="clock-error" class="clock-error" role="alert" hidden></div>
       <section class="selected-city" aria-label="Выбранный город">
-        <div class="eyebrow">${icon("pin")} ВЫБРАННЫЙ ГОРОД</div>
+        <div class="eyebrow">${icon("pin")} <span id="selected-kind">ВЫБРАННЫЙ ГОРОД</span></div>
         <h2 id="selected-name">—</h2>
         <div class="selected-place"><span id="selected-country">—</span><span class="divider">/</span><span id="selected-offset">—</span></div>
         <div id="selected-time" class="selected-time">--:--<span>:--</span></div>
         <div id="selected-date" class="selected-date">—</div>
         <div id="selected-coordinates" class="coordinates">—</div>
+        <div id="selected-elevation" class="elevation">Высоты загружаются…</div>
       </section>
       <div class="tools" role="toolbar" aria-label="Управление глобусом">
         <button id="rotate" type="button" aria-pressed="false" title="Автовращение">${icon("rotate")}<span>Вращение</span></button>
@@ -50,14 +52,29 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
         <span class="tool-divider"></span>
         <button id="reset" type="button" title="Исходный вид" aria-label="Исходный вид">${icon("home")}</button>
       </div>
-      <footer class="view-footer"><span>ПЕРЕТАЩИТЕ ДЛЯ ВРАЩЕНИЯ <span class="footer-dot">·</span> КОЛЕСО ДЛЯ МАСШТАБА</span><span>8K · NASA / SOLAR SYSTEM SCOPE · CC BY 4.0</span></footer>
+      <footer class="view-footer"><span>ПЕРЕТАЩИТЕ ДЛЯ ВРАЩЕНИЯ <span class="footer-dot">·</span> КОЛЕСО ДЛЯ МАСШТАБА</span><span>РЕЛЬЕФ NOAA ETOPO 2022 · ТЕКСТУРЫ NASA / SOLAR SYSTEM SCOPE</span></footer>
     </section>
     <aside class="sidebar" aria-label="Мировое время">
-      <div class="sidebar-heading"><div class="eyebrow">ЧАСОВЫЕ ПОЯСА</div><div class="sidebar-title"><h2>Мир сейчас</h2><span id="city-count" class="count">22</span></div><p>Разные часы. Один момент.</p></div>
+      <div class="sidebar-heading"><div class="eyebrow">ЧАСОВЫЕ ПОЯСА</div><div class="sidebar-title"><h2>Мир сейчас</h2><span id="city-count" class="count">—</span></div><p>Разные часы. Один момент.</p></div>
       <label class="search">${icon("search")}<input id="search" type="search" placeholder="Город, страна или часовой пояс" aria-label="Поиск города" autocomplete="off" spellcheck="false" /><kbd>/</kbd></label>
-      <div class="list-heading"><span>ГОРОД</span><span>МЕСТНОЕ ВРЕМЯ</span></div>
+      <div class="list-heading"><span>ГОРОД / МЕСТО</span><span>МЕСТНОЕ ВРЕМЯ</span></div>
       <div id="city-list" class="city-list"></div>
       <div id="empty" class="empty" hidden>Ничего не найдено.<br/><span>Попробуйте другое название.</span></div>
+      <div class="world-settings">
+      <details class="terrain-panel" open>
+        <summary>Рельеф Земли <span>NOAA ETOPO</span></summary>
+        <div class="terrain-options">
+          <label for="terrain-scale">Вертикальный масштаб <output id="terrain-scale-value" for="terrain-scale">×20</output></label>
+          <input id="terrain-scale" class="terrain-control" type="range" min="1" max="50" step="1" value="20" disabled />
+          <p id="terrain-scale-note" class="terrain-note">Высоты усилены в 20 раз</p>
+          <label class="bathymetry-option"><input id="terrain-bathymetry" class="terrain-control" type="checkbox" disabled /> Показать океанское дно</label>
+          <p class="terrain-note">Без воды и облаков. Цвет показывает высоту или глубину.</p>
+          <label for="terrain-detail">Детализация</label>
+          <select id="terrain-detail" class="terrain-control" disabled><option value="standard">Стандартная</option><option value="high">Высокая · больше нагрузка</option></select>
+          <div class="relief-places"><button id="terrain-himalayas" class="terrain-control" type="button" disabled>Гималаи ↗</button><button id="terrain-mariana" class="terrain-control" type="button" disabled>Марианская впадина ↗</button></div>
+          <p class="terrain-note">Высоты и глубины относительно уровня моря. Сетка данных: 6′ ≈ 11 км у экватора.</p>
+        </div>
+      </details>
       <section class="solar-panel" aria-label="Солнечное освещение">
         <label class="solar-switch" for="sunlight"><span><strong>День и ночь</strong><small>По положению Солнца</small></span><input id="sunlight" type="checkbox" role="switch" /><span class="switch-track" aria-hidden="true"></span></label>
         <div id="solar-options" class="solar-options" hidden>
@@ -68,6 +85,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
           <p id="solar-status" class="solar-status"></p>
         </div>
       </section>
+      </div>
       <div class="utc-panel"><div><span class="live-dot"></span><span>ВСЕМИРНОЕ ВРЕМЯ</span><strong>UTC</strong></div><time id="utc-time">--:--:--</time><span id="utc-date">—</span></div>
     </aside>
   </main>
@@ -80,6 +98,20 @@ document.title = `EarthTime v${version.trim()} — время на Земле`;
 const sunlightToggle = element<HTMLInputElement>("sunlight");
 const solarMode = element<HTMLSelectElement>("solar-mode");
 const solarInput = element<HTMLInputElement>("solar-date");
+const terrainScale = element<HTMLInputElement>("terrain-scale");
+const terrainBathymetry = element<HTMLInputElement>("terrain-bathymetry");
+const terrainDetail = element<HTMLSelectElement>("terrain-detail");
+let storedTerrain: string | null = null;
+try {
+  storedTerrain = localStorage.getItem("earthtime.terrain");
+} catch {
+  /* Storage is optional. */
+}
+const terrain: TerrainSettings = readTerrainSettings(storedTerrain);
+terrainScale.value = String(terrain.exaggeration);
+terrainBathymetry.checked = terrain.bathymetry;
+terrainDetail.value = terrain.detail;
+updateTerrainCaption();
 let storedSolar: string | null = null;
 try {
   storedSolar = localStorage.getItem("earthtime.sunlight");
@@ -121,8 +153,19 @@ function selectCity(id: string): void {
 
 function renderSelection(): void {
   const city = snapshot.cities.find((city) => city.id === selectedID)!;
+  element("selected-kind").textContent =
+    city.kind === "reference" ? "ОПОРНАЯ ТОЧКА UTC" : "ВЫБРАННЫЙ ГОРОД";
+  document
+    .querySelector(".selected-city")!
+    .setAttribute(
+      "aria-label",
+      city.kind === "reference" ? "Выбранная опорная точка" : "Выбранный город",
+    );
   element("selected-name").textContent = city.name;
-  element("selected-country").textContent = city.country;
+  element("selected-country").textContent =
+    city.kind === "reference"
+      ? `${city.country} · необитаемый остров`
+      : city.country;
   element("selected-offset").textContent = utcOffset(city.offsetSeconds);
   element("selected-time").innerHTML =
     `${city.time.slice(0, 5)}<span>${city.time.slice(5)}</span>`;
@@ -131,6 +174,33 @@ function renderSelection(): void {
   );
   element("selected-coordinates").textContent =
     `${Math.abs(city.lat).toFixed(2)}° ${city.lat < 0 ? "Ю" : "С"}  /  ${Math.abs(city.lon).toFixed(2)}° ${city.lon < 0 ? "З" : "В"}`;
+  const height = globe?.elevationAt(city.lat, city.lon);
+  element("selected-elevation").textContent =
+    height == null
+      ? "Высоты загружаются…"
+      : `Рельеф в точке: ≈ ${Math.round(height).toLocaleString("ru-RU")} м`;
+}
+
+function updateTerrainCaption(): void {
+  const scale = Number(terrainScale.value);
+  element("terrain-scale-value").textContent = `×${scale}`;
+  element("terrain-scale-note").textContent =
+    scale === 1
+      ? "Реальный вертикальный масштаб 1:1"
+      : `Высоты и глубины усилены в ${scale} раз`;
+}
+
+function applyTerrain(): void {
+  terrain.exaggeration = Number(terrainScale.value);
+  terrain.bathymetry = terrainBathymetry.checked;
+  terrain.detail = terrainDetail.value === "high" ? "high" : "standard";
+  globe?.setTerrain(terrain);
+  if (snapshot) renderSelection();
+  try {
+    localStorage.setItem("earthtime.terrain", JSON.stringify(terrain));
+  } catch {
+    /* Storage is optional. */
+  }
 }
 
 function filterCities(): void {
@@ -159,7 +229,10 @@ function createRows(cities: CityTime[]): void {
     row.dataset.city = city.id;
     row.innerHTML = `<span class="city-dot"></span><span class="city-info"><strong></strong><span></span></span><span class="city-clock"><strong></strong><span></span></span><span class="city-arrow">${icon("arrow")}</span>`;
     row.querySelector(".city-info strong")!.textContent = city.name;
-    row.querySelector(".city-info span")!.textContent = city.country;
+    row.querySelector(".city-info span")!.textContent =
+      city.kind === "reference"
+        ? "Необитаемый остров · ориентир UTC−12"
+        : city.country;
     row.addEventListener("click", () => selectCity(city.id));
     rows.set(city.id, row);
     element("city-list").append(row);
@@ -268,8 +341,14 @@ async function start(): Promise<void> {
       );
       globe.select(selectedID, selectedID !== "istanbul");
       globe.update(snapshot.cities);
+      globe.setTerrain(terrain);
       updateSunlight();
-      await globe.loadTextures();
+      await globe.loadAssets();
+      for (const control of document.querySelectorAll<
+        HTMLInputElement | HTMLSelectElement | HTMLButtonElement
+      >(".terrain-control"))
+        control.disabled = false;
+      renderSelection();
       element("load-status").hidden = true;
     } catch (error) {
       showError(error);
@@ -285,6 +364,20 @@ async function start(): Promise<void> {
 
 search.addEventListener("input", () => {
   if (snapshot) filterCities();
+});
+terrainScale.addEventListener("input", updateTerrainCaption);
+terrainScale.addEventListener("change", applyTerrain);
+terrainBathymetry.addEventListener("change", applyTerrain);
+terrainDetail.addEventListener("change", applyTerrain);
+element("terrain-himalayas").addEventListener("click", () => {
+  terrainBathymetry.checked = false;
+  applyTerrain();
+  globe?.focusLocation(28, 86.9);
+});
+element("terrain-mariana").addEventListener("click", () => {
+  terrainBathymetry.checked = true;
+  applyTerrain();
+  globe?.focusLocation(11.35, 142.2);
 });
 sunlightToggle.addEventListener("change", () => {
   solar.enabled = sunlightToggle.checked;
