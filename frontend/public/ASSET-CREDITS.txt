@@ -1,4 +1,4 @@
-EarthTime 1.2.1 — Earth map and terrain credits
+EarthTime 1.2.2 — Earth map and terrain credits
 
 DAY MAP (8192 x 4096)
 NASA Blue Marble: The Blue Marble: Land Surface, Ocean Color and Sea Ice.
@@ -31,3 +31,11 @@ Every sixth grid cell sampled; rounded to meters and gzip-packed. Ocean mask
 derived by connectivity. No invented terrain. See terrain/etopo2022-6min.json
 for source URL, SHA-256, range, coordinates and binary format.
 The source permits free redistribution without warranty; not for navigation.
+
+CITY REFERENCE POINTS
+GeoNames cities500, WGS84 coordinates, accessed 2026-10-25.
+https://www.geonames.org/
+https://download.geonames.org/export/dump/
+CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+Urban reference points adapted for Bogota, Lagos, Kinshasa, Dhaka, Singapore
+and London Village on Kiritimati. The full GeoNames database is not bundled.

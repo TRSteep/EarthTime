@@ -1,9 +1,45 @@
 package world
 
 import (
+	"math"
 	"testing"
 	"time"
 )
+
+func TestCityMarkersStayNearUrbanReferenceCenters(t *testing.T) {
+	s, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// WGS84 reference centres from GeoNames cities500 (CC BY 4.0), accessed 2026-10-25.
+	// Keep a geographic tolerance rather than requiring one exact street address.
+	references := map[string]struct{ lat, lon float64 }{
+		"bogota":     {4.60971, -74.08175},  // GeoNames 3688689
+		"lagos":      {6.45407, 3.39467},    // 2332459
+		"kinshasa":   {-4.32758, 15.31357},  // 2314302
+		"dhaka":      {23.7104, 90.40744},   // 1185241
+		"singapore":  {1.28967, 103.85007},  // 1880252
+		"kiritimati": {1.98487, -157.47502}, // 4030939, London Village rather than the island centroid
+	}
+	checked := 0
+	for _, city := range s.cities {
+		ref, ok := references[city.ID]
+		if !ok {
+			continue
+		}
+		lat1, lat2 := city.Lat*math.Pi/180, ref.lat*math.Pi/180
+		dlat, dlon := (city.Lat-ref.lat)*math.Pi/180, (city.Lon-ref.lon)*math.Pi/180
+		a := math.Pow(math.Sin(dlat/2), 2) + math.Cos(lat1)*math.Cos(lat2)*math.Pow(math.Sin(dlon/2), 2)
+		km := 12742 * math.Asin(math.Sqrt(math.Min(1, a)))
+		if km > 3 {
+			t.Errorf("%s is %.2f km from its urban reference centre", city.ID, km)
+		}
+		checked++
+	}
+	if checked != len(references) {
+		t.Errorf("checked %d of %d references", checked, len(references))
+	}
+}
 
 func TestClockAcrossDSTAndFractionalZones(t *testing.T) {
 	s, err := New()

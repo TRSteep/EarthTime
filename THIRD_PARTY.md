@@ -1,6 +1,6 @@
 # Third-party assets
 
-EarthTime 1.2.1 uses the following original high-resolution Earth maps, retrieved on 2026-10-25. The previous low-resolution three.js example maps have been removed.
+EarthTime 1.2.2 uses the following original high-resolution Earth maps, retrieved on 2026-10-25. The previous low-resolution three.js example maps have been removed.
 
 | Local file | Author / upstream file | Resolution |
 | --- | --- | --- |
@@ -35,5 +35,9 @@ Runtime libraries:
 
 - [three.js](https://github.com/mrdoob/three.js): MIT.
 - [Wails](https://github.com/wailsapp/wails): MIT.
+
+## City reference coordinates
+
+Urban reference points for Bogotá, Lagos, Kinshasa, Dhaka, Singapore and London Village (Kiritimati) were checked and adapted from [GeoNames cities500](https://download.geonames.org/export/dump/), accessed 2026-10-25, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). GeoNames uses WGS84 coordinates; see [About GeoNames](https://www.geonames.org/about.html). These points identify settlements rather than the geographic centre of their larger urban region or island. No complete GeoNames dataset is distributed with the app.
 
 Dependency versions are fixed in `go.mod`, `go.sum`, `frontend/package.json`, and `frontend/pnpm-lock.yaml`. Their upstream license notices remain with the dependencies.
