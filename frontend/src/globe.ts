@@ -283,7 +283,10 @@ export class Globe {
       label.innerHTML = "<span></span><strong></strong>";
       label.children[0].textContent = city.name;
       label.children[1].textContent = city.time.slice(0, 5);
-      label.setAttribute("aria-label", `Показать город ${city.name}`);
+      label.setAttribute(
+        "aria-label",
+        `Показать ${city.kind === "reference" ? "опорную точку" : "город"} ${city.name}`,
+      );
       label.addEventListener("click", () => onSelect(city.id));
       this.labelLayer.append(label);
       this.markers.push({ city, position, dot, ring, label });

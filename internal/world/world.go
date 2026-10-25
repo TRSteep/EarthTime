@@ -18,6 +18,7 @@ type City struct {
 	Lat      float64 `json:"lat"`
 	Lon      float64 `json:"lon"`
 	Timezone string  `json:"timezone"`
+	Kind     string  `json:"kind,omitempty"` // "reference" marks an uninhabited UTC anchor, not a city.
 }
 
 type CityTime struct {
@@ -52,7 +53,7 @@ func newService(cities []City) (*Service, error) {
 	s := &Service{cities: append([]City(nil), cities...)}
 	seen := make(map[string]bool)
 	for _, city := range s.cities {
-		if city.ID == "" || seen[city.ID] || city.Name == "" || city.Timezone == "" || city.Lat < -90 || city.Lat > 90 || city.Lon < -180 || city.Lon > 180 {
+		if city.ID == "" || seen[city.ID] || city.Name == "" || city.Timezone == "" || (city.Kind != "" && city.Kind != "reference") || city.Lat < -90 || city.Lat > 90 || city.Lon < -180 || city.Lon > 180 {
 			return nil, fmt.Errorf("invalid city: %q", city.ID)
 		}
 		seen[city.ID] = true

@@ -7,6 +7,7 @@ export interface City {
   lat: number;
   lon: number;
   timezone: string;
+  kind?: string;
 }
 export interface CityTime extends City {
   time: string;

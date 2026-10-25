@@ -1,6 +1,6 @@
 # Third-party assets
 
-EarthTime 1.2.0 uses the following original high-resolution Earth maps, retrieved on 2026-10-25. The previous low-resolution three.js example maps have been removed.
+EarthTime 1.2.1 uses the following original high-resolution Earth maps, retrieved on 2026-10-25. The previous low-resolution three.js example maps have been removed.
 
 | Local file | Author / upstream file | Resolution |
 | --- | --- | --- |

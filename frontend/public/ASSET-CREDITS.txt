@@ -1,4 +1,4 @@
-EarthTime 1.2.0 — Earth map and terrain credits
+EarthTime 1.2.1 — Earth map and terrain credits
 
 DAY MAP (8192 x 4096)
 NASA Blue Marble: The Blue Marble: Land Surface, Ocean Color and Sea Ice.
