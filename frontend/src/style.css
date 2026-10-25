@@ -9,6 +9,96 @@
   font-weight: 400;
 }
 
+.world-settings {
+  flex-shrink: 0;
+  max-height: 34dvh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #284251 transparent;
+  padding-right: 3px;
+}
+.terrain-panel {
+  border-top: 1px solid #22323f;
+  margin-top: 8px;
+  padding: 14px 0 3px;
+}
+.terrain-panel summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: #d6e4e8;
+}
+.terrain-panel summary span {
+  font-size: 8px;
+  color: #78999b;
+  margin-left: 6px;
+}
+.terrain-options {
+  padding-top: 15px;
+}
+.terrain-options label {
+  display: block;
+  font-size: 10px;
+  color: #8da7b7;
+  margin-bottom: 7px;
+}
+.terrain-options output {
+  float: right;
+  color: #b5dfd4;
+  font-variant-numeric: tabular-nums;
+}
+.terrain-options input[type="range"] {
+  width: 100%;
+  accent-color: #87cabb;
+  margin: 2px 0;
+}
+.terrain-options select {
+  width: 100%;
+  background: #0a1420;
+  border: 1px solid #2c4455;
+  border-radius: 5px;
+  color: #dce8ed;
+  padding: 7px 8px;
+  font-size: 11px;
+}
+.terrain-options .bathymetry-option {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #b5c9d3;
+  margin: 12px 0;
+  cursor: pointer;
+}
+.bathymetry-option input {
+  accent-color: #87cabb;
+}
+.terrain-note {
+  font-size: 9px;
+  line-height: 1.6;
+  margin: 6px 0 0;
+  color: #6f8a9e;
+}
+.relief-places {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+.relief-places button {
+  background: #142a32;
+  color: #abcfc6;
+  border: 1px solid #2a4850;
+  border-radius: 5px;
+  padding: 7px 6px;
+  font-size: 9px;
+}
+.relief-places button:hover {
+  background: #21454b;
+}
+.elevation {
+  font-size: 10px;
+  color: #799898;
+  margin-top: 9px;
+}
+
 .solar-panel {
   flex-shrink: 0;
   border-top: 1px solid #22323f;

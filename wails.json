@@ -1,7 +1,7 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
   "name": "EarthTime",
-  "outputfilename": "EarthTime",
+  "outputfilename": "EarthTime-relief",
   "frontend:install": "pnpm install --frozen-lockfile",
   "frontend:build": "pnpm run build",
   "frontend:dev:watcher": "pnpm run dev",
@@ -9,7 +9,7 @@
   "author": { "name": "EarthTime" },
   "info": {
     "productName": "EarthTime",
-    "productVersion": "1.1.0",
-    "comments": "3D Earth and world clocks"
+    "productVersion": "1.2.0",
+    "comments": "3D Earth with NOAA ETOPO terrain, bathymetry and world clocks"
   }
 }

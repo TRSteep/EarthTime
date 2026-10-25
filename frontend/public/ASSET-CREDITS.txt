@@ -1,4 +1,4 @@
-EarthTime 1.1.0 — Earth map credits
+EarthTime 1.2.0 — Earth map and terrain credits
 
 DAY MAP (8192 x 4096)
 NASA Blue Marble: The Blue Marble: Land Surface, Ocean Color and Sea Ice.
@@ -18,3 +18,16 @@ Retrieved on 2026-10-25. These maps are static, not live satellite feeds.
 
 THREE.JS
 MIT license — see THREE-LICENSE.txt bundled alongside this notice.
+
+NUMERIC TERRAIN AND BATHYMETRY
+NOAA National Centers for Environmental Information. 2022:
+ETOPO 2022 15 Arc-Second Global Relief Model.
+DOI: 10.25921/fd45-gt74. Accessed 2026-10-25.
+https://www.ncei.noaa.gov/products/etopo-global-relief-model
+https://oceanwatch.pifsc.noaa.gov/erddap/info/ETOPO_2022_v1_60s/index.html
+
+Derived from the 60 arc-second Ice Surface grid, EGM2008 elevations in meters.
+Every sixth grid cell sampled; rounded to meters and gzip-packed. Ocean mask
+derived by connectivity. No invented terrain. See terrain/etopo2022-6min.json
+for source URL, SHA-256, range, coordinates and binary format.
+The source permits free redistribution without warranty; not for navigation.
