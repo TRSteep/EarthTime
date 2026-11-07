@@ -9,6 +9,7 @@ import {
   type TerrainSettings,
 } from "./terrain";
 import { applyReliefScale, createReliefGeometry } from "./terrain-mesh";
+import { TERRAIN_ENABLED } from "./build";
 
 const vertexShader = `
   attribute float elevation;
@@ -343,7 +344,7 @@ export class Globe {
       loader.loadAsync("/textures/earth-day-8k.png"),
       loader.loadAsync("/textures/earth-night-8k.jpg"),
       loader.loadAsync("/textures/earth-clouds-8k.jpg"),
-      loadHeightField(),
+      TERRAIN_ENABLED ? loadHeightField() : Promise.resolve(undefined),
     ]);
     for (const texture of [day, night, clouds]) {
       texture.colorSpace =
@@ -357,6 +358,10 @@ export class Globe {
     this.earthMaterial.uniforms.dayMap.value = day;
     this.earthMaterial.uniforms.nightMap.value = night;
     this.ocean.material.uniforms.dayMap.value = day;
+    this.clouds.material.alphaMap = clouds;
+    this.clouds.material.needsUpdate = true;
+    this.clouds.visible = true;
+    if (!field) return;
     this.heightField = field;
     const mask = new THREE.DataTexture(
       field.oceanMask(),

@@ -10,6 +10,7 @@ import {
 } from "./solar";
 import version from "../../VERSION?raw";
 import { readTerrainSettings, type TerrainSettings } from "./terrain";
+import { TERRAIN_ENABLED } from "./build";
 
 const icons = {
   globe:
@@ -44,7 +45,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
         <div id="selected-time" class="selected-time">--:--<span>:--</span></div>
         <div id="selected-date" class="selected-date">—</div>
         <div id="selected-coordinates" class="coordinates">—</div>
-        <div id="selected-elevation" class="elevation">Высоты загружаются…</div>
+        <div id="selected-elevation" class="elevation" ${TERRAIN_ENABLED ? "" : "hidden"}>Высоты загружаются…</div>
       </section>
       <div class="tools" role="toolbar" aria-label="Управление глобусом">
         <button id="rotate" type="button" aria-pressed="false" title="Автовращение">${icon("rotate")}<span>Вращение</span></button>
@@ -52,7 +53,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
         <span class="tool-divider"></span>
         <button id="reset" type="button" title="Исходный вид" aria-label="Исходный вид">${icon("home")}</button>
       </div>
-      <footer class="view-footer"><span>ПЕРЕТАЩИТЕ ДЛЯ ВРАЩЕНИЯ <span class="footer-dot">·</span> КОЛЕСО ДЛЯ МАСШТАБА</span><span>РЕЛЬЕФ NOAA ETOPO 2022 · ТЕКСТУРЫ NASA / SOLAR SYSTEM SCOPE</span></footer>
+      <footer class="view-footer"><span>ПЕРЕТАЩИТЕ ДЛЯ ВРАЩЕНИЯ <span class="footer-dot">·</span> КОЛЕСО ДЛЯ МАСШТАБА</span><span>${TERRAIN_ENABLED ? "РЕЛЬЕФ NOAA ETOPO 2022 · " : ""}ТЕКСТУРЫ NASA / SOLAR SYSTEM SCOPE</span></footer>
     </section>
     <aside class="sidebar" aria-label="Мировое время">
       <div class="sidebar-heading"><div class="eyebrow">ЧАСОВЫЕ ПОЯСА</div><div class="sidebar-title"><h2>Мир сейчас</h2><span id="city-count" class="count">—</span></div><p>Разные часы. Один момент.</p></div>
@@ -61,7 +62,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <div id="city-list" class="city-list"></div>
       <div id="empty" class="empty" hidden>Ничего не найдено.<br/><span>Попробуйте другое название.</span></div>
       <div class="world-settings">
-      <details class="terrain-panel" open>
+      <details class="terrain-panel" open ${TERRAIN_ENABLED ? "" : "hidden"}>
         <summary>Рельеф Земли <span>NOAA ETOPO</span></summary>
         <div class="terrain-options">
           <label for="terrain-scale">Вертикальный масштаб <output id="terrain-scale-value" for="terrain-scale">×20</output></label>
@@ -347,7 +348,7 @@ async function start(): Promise<void> {
       for (const control of document.querySelectorAll<
         HTMLInputElement | HTMLSelectElement | HTMLButtonElement
       >(".terrain-control"))
-        control.disabled = false;
+        control.disabled = !TERRAIN_ENABLED;
       renderSelection();
       element("load-status").hidden = true;
     } catch (error) {
